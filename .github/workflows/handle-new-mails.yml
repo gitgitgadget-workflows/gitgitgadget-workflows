@@ -33,7 +33,7 @@ jobs:
         private-key: ${{ secrets.GITGITGADGET_GIT_GITHUB_APP_PRIVATE_KEY }}
         owner: dscho
         repositories: git
-    - uses: gitgitgadget/gitgitgadget/handle-new-mails@v1
+    - uses: dscho/gitgitgadget/handle-new-mails@v1
       with:
         pr-repo-token: ${{ steps.gitgitgadget-git-token.outputs.token }}
         upstream-repo-token: ${{ steps.git-git-token.outputs.token }}

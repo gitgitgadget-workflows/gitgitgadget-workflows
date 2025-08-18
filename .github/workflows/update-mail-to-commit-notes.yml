@@ -20,6 +20,6 @@ jobs:
         private-key: ${{ secrets.GITGITGADGET_GITHUB_APP_PRIVATE_KEY }}
         owner: gitgitgadget
         repositories: git
-    - uses: gitgitgadget/gitgitgadget/update-mail-to-commit-notes@v1
+    - uses: dscho/gitgitgadget/update-mail-to-commit-notes@v1
       with:
         pr-repo-token: ${{ steps.gitgitgadget-git-token.outputs.token }}

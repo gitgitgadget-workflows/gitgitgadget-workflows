@@ -79,7 +79,7 @@ jobs:
           -f "output[text]=$text" \
           --jq '"check_run_id=\(.id)"')"
         echo "check_run_id=$check_run_id" >> $GITHUB_OUTPUT
-    - uses: gitgitgadget/gitgitgadget/handle-pr-comment@v1
+    - uses: dscho/gitgitgadget/handle-pr-comment@v1
       with:
         pr-repo-token: ${{ steps.gitgitgadget-git-token.outputs.token }}
         upstream-repo-token: ${{ steps.git-git-token.outputs.token }}
