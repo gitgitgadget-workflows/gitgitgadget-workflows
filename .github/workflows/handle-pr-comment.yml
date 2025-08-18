@@ -9,9 +9,12 @@ on:
       pr-comment-url:
         description: 'URL of the PR comment to handle'
         required: true
+  push:
+    branches:
+      - migrate-gitgitgadget-to-github-actions
 
 env:
-  PR_COMMENT_URL: ${{ inputs.pr-comment-url }}
+  PR_COMMENT_URL: ${{ inputs.pr-comment-url || 'https://github.com/gitgitgadget/git/pull/1615#issuecomment-3197439884' }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.pr-comment-url }}
