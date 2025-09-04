@@ -35,7 +35,7 @@ jobs:
           config="$(cat gitgitgadget-config.json)" &&
           printf 'GITGITGADGET_CONFIG<<EOF\n%s\nEOF\n' "$config" &&
           printf 'GITGITGADGET_CONFIG<<EOF\n%s\nEOF\n' "$config" >>$GITHUB_ENV
-      - uses: gitgitgadget/gitgitgadget/validate-config@v1
+      - uses: dscho/gitgitgadget/validate-config@v1
         with:
           config: '${{ env.GITGITGADGET_CONFIG }}'
       - name: obtain installation token
