@@ -1,0 +1,50 @@
+name: Synchronize config to the repository variable
+
+# Some things are just a lot harder to do with files tracked in a Git
+# repository than with repository variables.
+#
+# For example, defining the matrix for the `sync-upstream-branches` would
+# require a _prerequisite_ job merely to check out the repository, read the
+# file, define a step output, use that to define the job output, and then make
+# the matrix job dependent on the prerequisite job. With a repository variable,
+# the same task does not require an extra job and is as easy as:
+#
+#   job:
+#   strategy:
+#     matrix:
+#       spec: ${{ fromJSON(vars.CONFIG).syncUpstreamBranches }}
+#
+# To get both the convenience of a repository variable as well as the
+# transparency and ease of maintenance of a `gitgitgadget-config.json` file
+# tracked in Git, this workflow stores the contents of that file as the
+# `CONFIG` repository variable whenever the `config` branch is updated.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - config
+
+jobs:
+  synchronize-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: read config
+        run: |
+          config="$(cat gitgitgadget-config.json)" &&
+          printf 'GITGITGADGET_CONFIG<<EOF\n%s\nEOF\n' "$config" &&
+          printf 'GITGITGADGET_CONFIG<<EOF\n%s\nEOF\n' "$config" >>$GITHUB_ENV
+      - uses: gitgitgadget/gitgitgadget/validate-config@v1
+        with:
+          config: '${{ env.GITGITGADGET_CONFIG }}'
+      - name: obtain installation token
+        uses: actions/create-github-app-token@v2
+        id: token
+        with:
+          app-id: ${{ secrets.GITGITGADGET_GITHUB_APP_ID }}
+          private-key: ${{ secrets.GITGITGADGET_GITHUB_APP_PRIVATE_KEY }}
+      - name: synchronize config to vars.CONFIG
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: gh variable set CONFIG <gitgitgadget-config.json
