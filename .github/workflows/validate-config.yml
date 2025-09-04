@@ -1,0 +1,20 @@
+name: Validate config
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: read config
+        run: |
+          config="$(cat gitgitgadget-config.json)" &&
+          printf 'GITGITGADGET_CONFIG<<EOF\n%s\nEOF\n' "$config" &&
+          printf 'GITGITGADGET_CONFIG<<EOF\n%s\nEOF\n' "$config" >>$GITHUB_ENV
+      - uses: gitgitgadget/gitgitgadget/validate-config@v1
+        with:
+          config: '${{ env.GITGITGADGET_CONFIG }}'
