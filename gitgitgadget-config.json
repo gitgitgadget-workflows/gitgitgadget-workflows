@@ -39,7 +39,9 @@
   },
   "mail": {
     "author": "GitGitGadget",
-    "sender": "GitGitGadget"
+    "sender": "GitGitGadget",
+    "smtpUser": "gitgitgadget@gmail.com",
+    "smtpHost": "smtp.gmail.com"
   },
   "app": {
     "appID": 12836,
@@ -56,5 +58,17 @@
   },
   "user": {
     "allowUserAsLogin": false
-  }
+  },
+  "syncUpstreamBranches": [
+    {
+      "sourceRepo": "gitster/git",
+      "targetRepo": "gitgitgadget/git",
+      "sourceRefRegex": "^refs/heads/(maint-\\d|[a-z][a-z]/)"
+    },
+    {
+      "sourceRepo": "j6t/git-gui",
+      "targetRepo": "gitgitgadget/git",
+      "targetRefNamespace": "git-gui/"
+    }
+  ]
 }
