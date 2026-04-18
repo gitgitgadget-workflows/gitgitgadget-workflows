@@ -8,7 +8,7 @@ on:
     inputs:
       pr-url:
         description: 'URL of the PR to handle'
-        required: true
+        required: false 
 
 env:
   PR_URL: ${{ inputs.pr-url }}
