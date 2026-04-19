@@ -1,0 +1,114 @@
+name: sync-ref
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The ref to synchronize from git/git to gitgitgadget/git
+        type: string
+        default: refs/heads/master
+      source-repository:
+        description: The repository from which to sync the ref
+        type: string
+        default: git/git
+      target-repository:
+        description: The repository to which to sync the ref
+        type: string
+        default: gitgitgadget/git
+
+env:
+  SOURCE_REPOSITORY: ${{ inputs.source-repository || 'git/git' }}
+  TARGET_REPOSITORY: ${{ inputs.target-repository || 'gitgitgadget/git' }}
+  REF: ${{ inputs.ref || 'refs/heads/master' }}
+
+jobs:
+  sync-ref:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check whether the ref is in sync
+        uses: actions/github-script@v8
+        id: check
+        with:
+          script: |
+            const [targetRepoOwner, targetRepoName] = process.env.TARGET_REPOSITORY.split('/')
+            core.setOutput('target-repo-owner', targetRepoOwner)
+            core.setOutput('target-repo-name', targetRepoName)
+
+            const getSHA = async (repository, ref) => {
+              if (ref.startsWith('refs/heads/') || ref.startsWith('refs/tags/')) ref = ref.substring(4)
+              else throw new Error(`Cannot handle ref '${ref}`)
+
+              try {
+                const [owner, repo] = repository.split('/')
+                const { data: { object: { sha } } } = await github.rest.git.getRef({
+                  owner,
+                  repo,
+                  ref
+                })
+                return sha
+              } catch (e) {
+                if (e?.status == 404) return undefined
+                throw e
+              }
+            }
+
+            const sourceSHA = await getSHA(process.env.SOURCE_REPOSITORY, process.env.REF)
+            const targetSHA = await getSHA(process.env.TARGET_REPOSITORY, process.env.REF)
+            // skip sync if SHAs match, making extra certain that `master` is also synced to `main`
+            const skip = sourceSHA !== targetSHA
+              ? false
+              : (process.env.REF !== 'refs/heads/master' ||
+                 sourceSHA === await getSHA(process.env.TARGET_REPOSITORY, 'refs/heads/main'))
+            core.setOutput('skip', skip ? 'true' : 'false')
+            core.setOutput('source-sha', sourceSHA || '')
+            core.setOutput('target-sha', targetSHA || '')
+      - name: obtain installation token
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/create-github-app-token@v3
+        id: token
+        with:
+          app-id: ${{ secrets.GITGITGADGET_GITHUB_APP_ID }}
+          private-key: ${{ secrets.GITGITGADGET_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ steps.check.outputs.target-repo-owner }}
+          repositories: ${{ steps.check.outputs.target-repo-name }}
+      - name: set authorization header
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/github-script@v8
+        id: auth
+        with:
+          script: |
+            // Sadly, `git push` does not work with 'Authorization: Bearer <PAT>', therefore
+            // we have to use the `Basic` variant
+            const auth = Buffer.from('PAT:${{ steps.token.outputs.token }}').toString('base64')
+            core.setSecret(auth)
+            core.setOutput('header', `Authorization: Basic ${auth}`)
+      - name: sync
+        if: steps.check.outputs.skip == 'false'
+        shell: bash
+        run: |
+          set -ex
+          git init --bare
+
+          git remote add source "${{ github.server_url }}/$SOURCE_REPOSITORY"
+          # pretend to be a partial clone
+          git config remote.source.promisor true
+          git config remote.source.partialCloneFilter blob:none
+
+          if test -n "${{ steps.check.outputs.source-sha }}"
+          then
+            # fetch some commits
+            git fetch --depth 10000 source ${{ steps.check.outputs.source-sha }}
+            rm -f .git/shallow
+          fi
+
+          # push the commits
+          extra=
+          case "$REF" in
+          refs/heads/master) force=; extra="${{ steps.check.outputs.source-sha }}:refs/heads/main";;
+          refs/heads/main|refs/heads/maint|refs/heads/maint-*) force=;;
+          *) force=--force;;
+          esac
+          git -c http.extraHeader='${{ steps.auth.outputs.header }}' \
+            push $force \
+            "${{ github.server_url }}/$TARGET_REPOSITORY" \
+            "${{ steps.check.outputs.source-sha }}:$REF" $extra
